@@ -2,45 +2,41 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Paquetería - Navegación por Voz</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paquetería Móvil - Navegación en Tiempo Real</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 <style>
 body { margin:0; font-family:'Segoe UI', sans-serif; }
 #map { height:100vh; width:100%; transition: margin-left 0.3s; }
 
-/* Sidebar oculto */
+/* Sidebar deslizante */
 .sidebar {
   height:100%;
   width:0;
   position:fixed;
+  top:0; left:0;
   z-index:2000;
-  top:0;
-  left:0;
   background:#fff;
   overflow-x:hidden;
   transition:0.3s;
   padding:20px;
-  box-shadow:2px 0 10px rgba(0,0,0,0.3);
+  box-shadow:2px 0 12px rgba(0,0,0,0.3);
   display:flex;
   flex-direction:column;
 }
-.sidebar h2 { margin-top:0; font-size:1.5em; color:#333; text-align:center; }
+.sidebar h2 { margin-top:0; font-size:1.6em; color:#333; text-align:center; }
 .sidebar input, .sidebar select, .sidebar button {
-  width:100%; margin:8px 0; padding:10px; font-size:14px; border-radius:8px; border:1px solid #ccc; box-sizing:border-box;
+  width:100%; margin:10px 0; padding:14px; font-size:16px; border-radius:10px; border:1px solid #ccc; box-sizing:border-box;
 }
-.sidebar input, .sidebar select { border:1px solid #ddd; }
-.sidebar button {
-  background-color:#28a745; color:white; cursor:pointer; transition:0.3s; font-weight:bold;
-}
+.sidebar button { background-color:#28a745; color:white; cursor:pointer; transition:0.3s; font-weight:bold; }
 .sidebar button:hover { background-color:#218838; }
 .dest-list {
-  max-height:200px;
+  max-height:250px;
   overflow-y:auto;
-  margin:8px 0;
+  margin:10px 0;
   border:1px solid #ddd;
-  border-radius:8px;
+  border-radius:10px;
   padding:5px;
   background:#f9f9f9;
 }
@@ -49,20 +45,20 @@ body { margin:0; font-family:'Segoe UI', sans-serif; }
   justify-content:space-between;
   align-items:center;
   margin-bottom:5px;
-  padding:4px 6px;
-  border-radius:4px;
+  padding:6px 8px;
+  border-radius:6px;
   transition:0.2s;
 }
 .dest-list div:hover { background:#e0f7fa; }
-.dest-list button { background:none; border:none; cursor:pointer; font-size:16px; padding:0 4px; color:#007bff; }
+.dest-list button { background:none; border:none; cursor:pointer; font-size:18px; padding:0 6px; color:#007bff; }
 .dest-list button:hover { color:#0056b3; }
 
 .route-info {
-  margin-top:10px;
-  font-size:14px;
-  padding:8px;
+  margin-top:12px;
+  font-size:15px;
+  padding:10px;
   background:#e8f5e9;
-  border-radius:6px;
+  border-radius:8px;
   color:#2e7d32;
   text-align:center;
 }
@@ -70,10 +66,17 @@ body { margin:0; font-family:'Segoe UI', sans-serif; }
 /* Boton abrir sidebar */
 .openbtn {
   position:absolute; top:15px; left:15px; z-index:2100;
-  font-size:22px; cursor:pointer; background-color:#007bff; color:white; border:none; padding:12px 16px; border-radius:6px;
-  box-shadow:0 3px 6px rgba(0,0,0,0.2); transition:0.3s;
+  font-size:26px; cursor:pointer; background-color:#007bff; color:white; border:none; padding:14px 18px; border-radius:8px;
+  box-shadow:0 3px 8px rgba(0,0,0,0.2); transition:0.3s;
 }
 .openbtn:hover { background-color:#0056b3; }
+
+/* Ajuste para móviles */
+@media (max-width:480px){
+  .sidebar { padding:15px; }
+  .sidebar input, .sidebar select, .sidebar button { font-size:16px; padding:12px; }
+  .openbtn { font-size:24px; padding:12px 14px; }
+}
 </style>
 </head>
 <body>
@@ -99,36 +102,28 @@ body { margin:0; font-family:'Segoe UI', sans-serif; }
 <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
-const map = L.map('map').setView([23.6345, -102.5528], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+const map = L.map('map').setView([23.6345, -102.5528],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19 }).addTo(map);
 
-let destinations=[], markers=[], routingControl=[];
+let destinations=[], markers=[], routingControl=null;
 let routeInstructions=[], nextInstructionIndex=0;
 
 // Sidebar
-function openSidebar(){ document.getElementById("mySidebar").style.width="300px"; map.getContainer().style.marginLeft="300px"; map.invalidateSize(); }
-function closeSidebar(){ document.getElementById("mySidebar").style.width="0"; map.getContainer().style.marginLeft="0"; map.invalidateSize(); }
+function openSidebar(){ 
+  document.getElementById("mySidebar").style.width="300px"; 
+  map.getContainer().style.marginLeft="300px"; 
+  map.invalidateSize(); 
+}
+function closeSidebar(){ 
+  document.getElementById("mySidebar").style.width="0"; 
+  map.getContainer().style.marginLeft="0"; 
+  map.invalidateSize(); 
+}
 
-// Posición en tiempo real
-navigator.geolocation.watchPosition(pos=>{
-  const { latitude: lat, longitude: lon } = pos.coords;
-  const userLatLng = [lat, lon];
-  if(!window.userMarker) window.userMarker = L.marker(userLatLng).addTo(map).bindPopup("Tu ubicación").openPopup();
-  else window.userMarker.setLatLng(userLatLng);
-
-  // Proximidad a siguiente instrucción
-  if(routingControl.length>0 && routeInstructions.length>nextInstructionIndex){
-    const inst = routeInstructions[nextInstructionIndex];
-    const dist = map.distance(userLatLng,[inst.lat,inst.lng]);
-    if(dist<50){ speak(inst.text); nextInstructionIndex++; }
-  }
-}, err=>console.warn(err), { enableHighAccuracy:true });
-
-// Función voz en español
+// Función voz
 function speak(text){
   const msg = new SpeechSynthesisUtterance(text);
-  msg.lang='es-MX';
-  msg.rate=1;
+  msg.lang='es-MX'; msg.rate=1;
   window.speechSynthesis.speak(msg);
 }
 
@@ -141,7 +136,7 @@ async function addAddress(){
     const data=await res.json();
     if(!data.length) return alert("Dirección no encontrada");
     const { lat, lon }=data[0];
-    const marker = L.marker([lat, lon], { draggable:true }).addTo(map).bindPopup(query).openPopup();
+    const marker = L.marker([lat,lon],{ draggable:true }).addTo(map).bindPopup(query).openPopup();
     marker.on("dragend",updateDestinations);
     markers.push(marker);
     destinations.push({name:query,lat:parseFloat(lat),lon:parseFloat(lon)});
@@ -152,7 +147,7 @@ async function addAddress(){
 }
 
 function updateDestinations(){
-  destinations = markers.map((m,i)=>({ name:destinations[i]?.name || "Destino "+(i+1), lat:m.getLatLng().lat, lon:m.getLatLng().lng }));
+  destinations=markers.map((m,i)=>({name:destinations[i]?.name||"Destino "+(i+1),lat:m.getLatLng().lat,lon:m.getLatLng().lng}));
   updateDestList();
 }
 
@@ -187,38 +182,67 @@ function findNearest(){
 }
 
 function goToSelected(){
-  const i=document.getElementById("destSelect").value;
-  if(i!=="" && i!=null) goToDest(i);
+  const i=parseInt(document.getElementById("destSelect").value);
+  if(!isNaN(i)) goToDest(i);
 }
 
 function goToDest(i){
   if(!window.userMarker) return alert("Tu ubicación no está disponible");
-  if(routingControl.length>0) routingControl.forEach(rc=>map.removeControl(rc));
-  routingControl=[];
-  const rc=L.Routing.control({
-    waypoints:[window.userMarker.getLatLng(), L.latLng(destinations[i].lat,destinations[i].lon)],
-    routeWhileDragging:false,
-    show:false
-  }).addTo(map);
-  routingControl.push(rc);
+  if(routingControl) map.removeControl(routingControl);
 
-  rc.on('routesfound', e=>{
-    const summary=e.routes[0].summary;
+  routingControl=L.Routing.control({
+    waypoints:[window.userMarker.getLatLng(), L.latLng(destinations[i].lat,destinations[i].lon)],
+    routeWhileDragging:true,
+    show:false,
+    addWaypoints:false,
+    draggableWaypoints:false,
+    fitSelectedRoutes:true
+  }).addTo(map);
+
+  routingControl.on('routesfound', e=>{
+    const route=e.routes[0];
+    const summary=route.summary;
     document.getElementById("routeInfo").innerHTML=
       `Distancia: ${(summary.totalDistance/1000).toFixed(2)} km<br>Tiempo: ${(summary.totalTime/60).toFixed(0)} min`;
-    
-    // Guardar instrucciones con coordenadas
+
+    // Guardar instrucciones y coordenadas
     routeInstructions=[]; nextInstructionIndex=0;
-    const route=e.routes[0];
-    route.instructions.forEach(inst=>{
-      const segment=route.coordinates[inst.index] || route.coordinates[0];
-      routeInstructions.push({ text: inst.text, lat: segment.lat, lng: segment.lng });
-    });
+    if(route.instructions){
+      route.instructions.forEach(inst=>{
+        const idx=inst.index<route.coordinates.length ? inst.index : 0;
+        const segment=route.coordinates[idx];
+        routeInstructions.push({text:inst.text,lat:segment.lat,lng:segment.lng});
+      });
+    }
   });
 }
 
-function locateMe(){ if(window.userMarker) map.setView(window.userMarker.getLatLng(),15); else alert("Ubicación no disponible"); }
+// Posición en tiempo real y actualización de ruta dinámica
+navigator.geolocation.watchPosition(pos=>{
+  const { latitude: lat, longitude: lon } = pos.coords;
+  const userLatLng = L.latLng(lat,lon);
+  if(!window.userMarker){
+    window.userMarker=L.marker(userLatLng).addTo(map).bindPopup("Tu ubicación").openPopup();
+  }else{
+    window.userMarker.setLatLng(userLatLng);
+  }
 
+  if(routingControl){
+    const wp=routingControl.getWaypoints();
+    wp[0].latLng=userLatLng;
+    routingControl.setWaypoints([userLatLng, wp[1].latLng]);
+
+    // Voz en proximidad
+    if(routeInstructions.length>nextInstructionIndex){
+      const inst=routeInstructions[nextInstructionIndex];
+      const dist=map.distance(userLatLng,[inst.lat,inst.lng]);
+      if(dist<50){ speak(inst.text); nextInstructionIndex++; }
+    }
+  }
+}, err=>console.warn(err), { enableHighAccuracy:true, maximumAge:0, timeout:5000 });
+
+function locateMe(){ if(window.userMarker) map.setView(window.userMarker.getLatLng(),16); else alert("Ubicación no disponible"); }
 </script>
+
 </body>
 </html>
