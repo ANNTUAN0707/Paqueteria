@@ -2,85 +2,78 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Paqueteria - Mapa de Rutas</title>
+<title>Paquetería - Navegación por Voz</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 <style>
-  body { margin:0; font-family: 'Segoe UI', sans-serif; }
-  #map { height: 100vh; width: 100%; transition: margin-left 0.3s; }
+body { margin:0; font-family:'Segoe UI', sans-serif; }
+#map { height:100vh; width:100%; transition: margin-left 0.3s; }
 
-  /* Sidebar */
-  .sidebar {
-    height: 100%;
-    width: 0;
-    position: fixed;
-    z-index: 2000;
-    top: 0;
-    left: 0;
-    background: #fff;
-    overflow-x: hidden;
-    transition: 0.3s;
-    padding: 20px;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.3);
-  }
-  .sidebar h2 { margin-top:0; }
-  .sidebar input, .sidebar select, .sidebar button {
-    width: 100%;
-    margin: 6px 0;
-    padding: 8px;
-    font-size: 14px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-  .sidebar button {
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-  .sidebar button:hover { background-color: #0056b3; }
+/* Sidebar oculto */
+.sidebar {
+  height:100%;
+  width:0;
+  position:fixed;
+  z-index:2000;
+  top:0;
+  left:0;
+  background:#fff;
+  overflow-x:hidden;
+  transition:0.3s;
+  padding:20px;
+  box-shadow:2px 0 10px rgba(0,0,0,0.3);
+  display:flex;
+  flex-direction:column;
+}
+.sidebar h2 { margin-top:0; font-size:1.5em; color:#333; text-align:center; }
+.sidebar input, .sidebar select, .sidebar button {
+  width:100%; margin:8px 0; padding:10px; font-size:14px; border-radius:8px; border:1px solid #ccc; box-sizing:border-box;
+}
+.sidebar input, .sidebar select { border:1px solid #ddd; }
+.sidebar button {
+  background-color:#28a745; color:white; cursor:pointer; transition:0.3s; font-weight:bold;
+}
+.sidebar button:hover { background-color:#218838; }
+.dest-list {
+  max-height:200px;
+  overflow-y:auto;
+  margin:8px 0;
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:5px;
+  background:#f9f9f9;
+}
+.dest-list div {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:5px;
+  padding:4px 6px;
+  border-radius:4px;
+  transition:0.2s;
+}
+.dest-list div:hover { background:#e0f7fa; }
+.dest-list button { background:none; border:none; cursor:pointer; font-size:16px; padding:0 4px; color:#007bff; }
+.dest-list button:hover { color:#0056b3; }
 
-  .dest-list {
-    max-height: 200px;
-    overflow-y: auto;
-    margin: 8px 0;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 5px;
-    background: #f9f9f9;
-  }
-  .dest-list div {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-  }
-  .dest-list button { background:none; border:none; cursor:pointer; font-size:14px; padding:0 4px; }
+.route-info {
+  margin-top:10px;
+  font-size:14px;
+  padding:8px;
+  background:#e8f5e9;
+  border-radius:6px;
+  color:#2e7d32;
+  text-align:center;
+}
 
-  .route-info {
-    margin-top: 10px;
-    font-size: 13px;
-    padding: 5px;
-    background: #eef;
-    border-radius: 6px;
-  }
-
-  /* Icono de abrir sidebar */
-  .openbtn {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    z-index: 2100;
-    font-size: 20px;
-    cursor: pointer;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 6px;
-  }
+/* Boton abrir sidebar */
+.openbtn {
+  position:absolute; top:15px; left:15px; z-index:2100;
+  font-size:22px; cursor:pointer; background-color:#007bff; color:white; border:none; padding:12px 16px; border-radius:6px;
+  box-shadow:0 3px 6px rgba(0,0,0,0.2); transition:0.3s;
+}
+.openbtn:hover { background-color:#0056b3; }
 </style>
 </head>
 <body>
@@ -91,17 +84,14 @@
 
 <div id="mySidebar" class="sidebar">
   <h2>Destinos</h2>
-  <input id="address" placeholder="Buscar direccion"/>
+  <input id="address" placeholder="Buscar dirección"/>
   <button onclick="addAddress()">Agregar destino</button>
-
   <div class="dest-list" id="destList"></div>
-
   <button onclick="findNearest()">Destino más cercano</button>
   <select id="destSelect"></select>
   <button onclick="goToSelected()">Ir</button>
   <button onclick="locateMe()">Dónde estoy</button>
-
-  <div class="route-info" id="routeInfo"></div>
+  <div class="route-info" id="routeInfo">Ruta vacía</div>
   <button style="margin-top:10px;" onclick="closeSidebar()">Cerrar</button>
 </div>
 
@@ -110,120 +100,125 @@
 
 <script>
 const map = L.map('map').setView([23.6345, -102.5528], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 
-let destinations = [];
-let markers = [];
-let routingControl;
+let destinations=[], markers=[], routingControl=[];
+let routeInstructions=[], nextInstructionIndex=0;
 
 // Sidebar
-function openSidebar(){ document.getElementById("mySidebar").style.width = "280px"; map.getContainer().style.marginLeft="280px"; map.invalidateSize(); }
-function closeSidebar(){ document.getElementById("mySidebar").style.width = "0"; map.getContainer().style.marginLeft="0"; map.invalidateSize(); }
+function openSidebar(){ document.getElementById("mySidebar").style.width="300px"; map.getContainer().style.marginLeft="300px"; map.invalidateSize(); }
+function closeSidebar(){ document.getElementById("mySidebar").style.width="0"; map.getContainer().style.marginLeft="0"; map.invalidateSize(); }
 
 // Posición en tiempo real
-navigator.geolocation.watchPosition(pos => {
+navigator.geolocation.watchPosition(pos=>{
   const { latitude: lat, longitude: lon } = pos.coords;
-  if (!window.userMarker) window.userMarker = L.marker([lat, lon]).addTo(map).bindPopup("Tu ubicación").openPopup();
-  else window.userMarker.setLatLng([lat, lon]);
-}, err => console.warn(err), { enableHighAccuracy: true });
+  const userLatLng = [lat, lon];
+  if(!window.userMarker) window.userMarker = L.marker(userLatLng).addTo(map).bindPopup("Tu ubicación").openPopup();
+  else window.userMarker.setLatLng(userLatLng);
 
-async function addAddress() {
-  const query = document.getElementById("address").value;
-  if (!query) return alert("Ingresa una dirección");
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-    const data = await res.json();
-    if (!data.length) return alert("Dirección no encontrada");
-    const { lat, lon } = data[0];
-    const marker = L.marker([lat, lon], { draggable: true }).addTo(map).bindPopup(query).openPopup();
-    marker.on("dragend", updateDestinations);
-    markers.push(marker);
-    destinations.push({ name: query, lat: parseFloat(lat), lon: parseFloat(lon) });
-    updateDestList();
-    map.setView([lat, lon], 13);
-    document.getElementById("address").value = "";
-  } catch(e){ alert("Error al buscar dirección"); console.error(e); }
+  // Proximidad a siguiente instrucción
+  if(routingControl.length>0 && routeInstructions.length>nextInstructionIndex){
+    const inst = routeInstructions[nextInstructionIndex];
+    const dist = map.distance(userLatLng,[inst.lat,inst.lng]);
+    if(dist<50){ speak(inst.text); nextInstructionIndex++; }
+  }
+}, err=>console.warn(err), { enableHighAccuracy:true });
+
+// Función voz en español
+function speak(text){
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang='es-MX';
+  msg.rate=1;
+  window.speechSynthesis.speak(msg);
 }
 
-function updateDestinations() {
-  destinations = markers.map((m, i) => ({
-    name: destinations[i]?.name || "Destino "+(i+1),
-    lat: m.getLatLng().lat,
-    lon: m.getLatLng().lng
-  }));
+// Funciones destinos
+async function addAddress(){
+  const query=document.getElementById("address").value;
+  if(!query) return alert("Ingresa una dirección");
+  try{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+    const data=await res.json();
+    if(!data.length) return alert("Dirección no encontrada");
+    const { lat, lon }=data[0];
+    const marker = L.marker([lat, lon], { draggable:true }).addTo(map).bindPopup(query).openPopup();
+    marker.on("dragend",updateDestinations);
+    markers.push(marker);
+    destinations.push({name:query,lat:parseFloat(lat),lon:parseFloat(lon)});
+    updateDestList();
+    map.setView([lat,lon],13);
+    document.getElementById("address").value="";
+  } catch(e){ alert("Error al buscar dirección"); console.error(e);}
+}
+
+function updateDestinations(){
+  destinations = markers.map((m,i)=>({ name:destinations[i]?.name || "Destino "+(i+1), lat:m.getLatLng().lat, lon:m.getLatLng().lng }));
   updateDestList();
 }
 
-function updateDestList() {
-  const list = document.getElementById("destList");
-  const select = document.getElementById("destSelect");
-  list.innerHTML = ""; select.innerHTML = "";
-  destinations.forEach((d, i) => {
-    const div = document.createElement("div");
-    div.innerHTML = `<span>${d.name}</span><span>
-      <button onclick="editDest(${i})">✏</button>
-      <button onclick="delDest(${i})">🗑</button></span>`;
+function updateDestList(){
+  const list=document.getElementById("destList");
+  const select=document.getElementById("destSelect");
+  list.innerHTML=""; select.innerHTML="";
+  destinations.forEach((d,i)=>{
+    const div=document.createElement("div");
+    div.innerHTML=`<span>${d.name}</span><span><button onclick="editDest(${i})">✏</button><button onclick="delDest(${i})">🗑</button></span>`;
     list.appendChild(div);
-    const opt = document.createElement("option");
-    opt.value = i; opt.textContent = d.name; select.appendChild(opt);
+    const opt=document.createElement("option"); opt.value=i; opt.textContent=d.name; select.appendChild(opt);
   });
 }
 
-function editDest(i) {
-  const newName = prompt("Nuevo nombre:", destinations[i].name);
-  if (newName) { destinations[i].name = newName; markers[i].bindPopup(newName); updateDestList(); }
+function editDest(i){
+  const newName=prompt("Nuevo nombre:",destinations[i].name);
+  if(newName){ destinations[i].name=newName; markers[i].bindPopup(newName); updateDestList(); }
 }
+
 function delDest(i){ map.removeLayer(markers[i]); markers.splice(i,1); destinations.splice(i,1); updateDestList(); }
 
-function findNearest() {
-  if (!window.userMarker || !destinations.length) return alert("No hay ubicación o destinos");
+function findNearest(){
+  if(!window.userMarker||!destinations.length) return alert("No hay ubicación o destinos");
   const userLatLng = window.userMarker.getLatLng();
-  let nearestIndex = 0, nearestDist = Infinity;
+  let nearestIndex=0, nearestDist=Infinity;
   destinations.forEach((d,i)=>{
-    const dist = map.distance(userLatLng,[d.lat,d.lon]);
+    const dist=map.distance(userLatLng,[d.lat,d.lon]);
     if(dist<nearestDist){ nearestDist=dist; nearestIndex=i; }
   });
   goToDest(nearestIndex);
 }
 
-function goToSelected() {
-  const i = document.getElementById("destSelect").value;
+function goToSelected(){
+  const i=document.getElementById("destSelect").value;
   if(i!=="" && i!=null) goToDest(i);
 }
 
 function goToDest(i){
   if(!window.userMarker) return alert("Tu ubicación no está disponible");
-  if(routingControl) map.removeControl(routingControl);
-  routingControl = L.Routing.control({
-    waypoints: [window.userMarker.getLatLng(), L.latLng(destinations[i].lat,destinations[i].lon)],
-    routeWhileDragging: false,
-    show: false
+  if(routingControl.length>0) routingControl.forEach(rc=>map.removeControl(rc));
+  routingControl=[];
+  const rc=L.Routing.control({
+    waypoints:[window.userMarker.getLatLng(), L.latLng(destinations[i].lat,destinations[i].lon)],
+    routeWhileDragging:false,
+    show:false
   }).addTo(map);
+  routingControl.push(rc);
 
-  routingControl.on('routesfound', e => {
-    const summary = e.routes[0].summary;
-    document.getElementById("routeInfo").innerHTML =
-      `Distancia: ${(summary.totalDistance/1000).toFixed(2)} km<br>
-       Tiempo: ${(summary.totalTime/60).toFixed(0)} min`;
-    speakInstructions(e.routes[0].instructions);
+  rc.on('routesfound', e=>{
+    const summary=e.routes[0].summary;
+    document.getElementById("routeInfo").innerHTML=
+      `Distancia: ${(summary.totalDistance/1000).toFixed(2)} km<br>Tiempo: ${(summary.totalTime/60).toFixed(0)} min`;
+    
+    // Guardar instrucciones con coordenadas
+    routeInstructions=[]; nextInstructionIndex=0;
+    const route=e.routes[0];
+    route.instructions.forEach(inst=>{
+      const segment=route.coordinates[inst.index] || route.coordinates[0];
+      routeInstructions.push({ text: inst.text, lat: segment.lat, lng: segment.lng });
+    });
   });
 }
 
-// Voz
-function speakInstructions(instructions){
-  window.speechSynthesis.cancel();
-  instructions.forEach((inst,index)=>{
-    setTimeout(()=>{
-      const msg = new SpeechSynthesisUtterance(inst.text);
-      msg.lang='es-MX'; msg.rate=1;
-      window.speechSynthesis.speak(msg);
-    }, index*5000);
-  });
-}
+function locateMe(){ if(window.userMarker) map.setView(window.userMarker.getLatLng(),15); else alert("Ubicación no disponible"); }
 
-function locateMe() { if(window.userMarker) map.setView(window.userMarker.getLatLng(),15); else alert("Ubicación no disponible"); }
 </script>
-
 </body>
 </html>
-
